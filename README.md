@@ -1,4 +1,4 @@
-# senior-thesis
+# Senior-Thesis
 
 Code and supporting analysis for my senior thesis on coarse-grained kinetic transition networks for LLPS-relevant hexapeptides.
 
@@ -96,4 +96,4 @@ In particular, `quantitative_keeplist_checks.py` is exploratory and may require 
 
 ## What This Repo Does Not Contain
 
-This repository is code-only. It does not include the thesis LaTeX project, raw peptide databases, or the large generated model artifacts produced after PATHSAMPLE / PyGT processing.
+This repository is code only. It does not include the thesis LaTeX project, raw peptide databases, or the large generated model artifacts produced after PATHSAMPLE / PyGT processing.
