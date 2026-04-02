@@ -1,15 +1,5 @@
 #!/usr/bin/env python
-"""
-build_markov_model.py
 
-Use PyGT to build a microscopic continuous-time Markov model for a
-PATHSAMPLE DPS directory at a given temperature.
-
-Outputs go to:
-    <DPS_DIR>/markov_TxxxK/
-
-and include B, K, Q, tau, pi, energies, entropies, etc.
-"""
 
 from __future__ import annotations
 

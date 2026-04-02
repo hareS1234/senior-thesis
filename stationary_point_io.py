@@ -1,15 +1,4 @@
-"""
-stationary_point_io.py
 
-Low-level I/O for PATHSAMPLE / KTN stationary-point data.
-
-- Read min.data and ts.data
-- Build a barrier-height graph aligned with the retained minima
-  used by PyGT (largest connected component).
-
-Barrier height for edge i--j is defined as:
-    barrier(i,j) = min_over_TS [ E_TS - min(E_i, E_j) ]
-"""
 
 from __future__ import annotations
 import numpy as np
@@ -22,18 +11,7 @@ from config import MarkovFilePaths
 
 
 def read_min_ts(data_dir: Path) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """
-    Read min.data and ts.data.
 
-    Returns
-    -------
-    min_energies : (n_min,) array
-        Energies of minima in *original* PATHSAMPLE indexing (1-based in files -> 0-based here).
-    ts_energies : (n_ts,) array
-        Energies of transition states.
-    ts_conn : (n_ts, 2) int array
-        Connected minima indices in original 1-based indexing (copied directly).
-    """
     min_path = data_dir / "min.data"
     ts_path = data_dir / "ts.data"
     if not min_path.exists() or not ts_path.exists():
@@ -68,27 +46,7 @@ def build_barrier_matrix(
     markov_paths: MarkovFilePaths,
     overwrite: bool = False,
 ) -> csr_matrix:
-    """
-    Construct a sparse symmetric matrix of barrier heights between
-    retained minima and save to disk.
 
-    Parameters
-    ----------
-    data_dir : Path
-        Directory containing min.data / ts.data.
-    markov_paths : MarkovFilePaths
-        Gives temperature-specific pygt_dir and retained_mask path.
-        NOTE: barrier heights are temperature-independent; we just
-        use the same retained-mask mapping as PyGT.
-    overwrite : bool
-        If False and barrier_matrix.npz exists, just load and return.
-
-    Returns
-    -------
-    barrier_mat : csr_matrix (N, N)
-        Symmetric matrix with barrier_mat[i, j] >= 0, stored in CSR.
-        N = number of retained minima.
-    """
     out_path = markov_paths.barrier_matrix_path
     if out_path.exists() and not overwrite:
         from scipy.sparse import load_npz

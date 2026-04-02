@@ -1,23 +1,5 @@
 #!/usr/bin/env python
-"""
-quantitative_keeplist_checks.py
 
-Quantitative robustness checks for basin-based keep lists:
-
-For a given DPS directory:
-  - loop over several ΔE_cut values
-  - for each, build a basin-based keep list
-  - run your existing KTN + graph transformation pipeline to obtain Q_eff
-  - compute MFPT_A->B, MFPT_B->A, and a few slow relaxation times
-  - write a CSV summarizing how these quantities depend on ΔE_cut.
-
-This script assumes you already have working code that:
-  (1) builds a microscopic KTN from PATHSAMPLE outputs, and
-  (2) applies graph transformation given a set of minima to keep.
-
-You will need to hook those pieces into the `build_Qeff_for_deltaE(...)`
-function below.
-"""
 
 from __future__ import annotations
 
@@ -31,15 +13,8 @@ from generate_basin_keep_lists import build_basin_keep_set
 from ktn_utils import compute_mfpt_from_Q, leading_relaxation_times
 
 
-
-
-
 def read_min_list(path: Path) -> np.ndarray:
-    """
-    Read PATHSAMPLE-style min.A or min.B list.
 
-    Returns a numpy array of 0-based indices.
-    """
     if not path.exists():
         return np.array([], dtype=int)
 
@@ -58,31 +33,12 @@ def read_min_list(path: Path) -> np.ndarray:
     return np.asarray(ids, dtype=int)
 
 
-
-
-
 def build_Qeff_for_deltaE(
     dps_dir: Path,
     deltaE_cut: float,
     E_window: float,
     temperature: float,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """
-    Build a coarse-grained generator Q_eff for a given ΔE_cut.
-
-    You MUST adapt this to your own KTN + GT pipeline. The skeleton is:
-
-      1) Build keep_ids via basin-based scheme.
-      2) Load microscopic KTN from PATHSAMPLE (using your PyGT wrapper).
-      3) Apply graph transformation with keep_ids as the kept set.
-      4) Return Q_eff (row-generator), and the mapping from kept indices
-         back to original minima indices (if needed).
-
-    For now, we return only Q_eff; we assume states are in the same order
-    as keep_ids.
-
-    Replace the `raise NotImplementedError` block with your actual calls.
-    """
 
 
     keep_ids_1based = build_basin_keep_set(
@@ -94,27 +50,9 @@ def build_Qeff_for_deltaE(
     keep_ids = np.array(keep_ids_1based, dtype=int) - 1
 
 
-
-
-
-
-
-
-
-
-
-
-
-
     raise NotImplementedError(
         "You need to hook in your existing KTN + GT code in build_Qeff_for_deltaE."
     )
-
-
-
-
-
-
 
 
 def main():
@@ -193,10 +131,8 @@ def main():
         print(f"[INFO] Size of coarse-grained generator: {n_eff} states")
 
 
-
         A_eff = np.intersect1d(A_ids, kept_order, assume_unique=False)
         B_eff = np.intersect1d(B_ids, kept_order, assume_unique=False)
-
 
 
         inv_map = {orig: pos for pos, orig in enumerate(kept_order)}

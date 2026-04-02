@@ -1,33 +1,5 @@
 #!/usr/bin/env python
-"""
-gnn_ablation_sweep.py
 
-Systematic hyperparameter ablation for GAT committor prediction.
-
-Sweeps over:
-    top_k     ∈ {5, 10, 20, 50, 100}
-    hidden_dim ∈ {32, 64, 128}
-    n_layers  ∈ {2, 3, 4}
-
-Each configuration is identified by its SLURM_ARRAY_TASK_ID, so the full
-sweep can be submitted as a single SLURM array job (45 configs total).
-
-This script:
-    1. Maps TASK_ID → (top_k, hidden_dim, n_layers)
-    2. Loads the KTN dataset (cached from previous runs)
-    3. Sparsifies to the given top_k
-    4. Trains GAT for the committor task
-    5. Saves metrics to {out_dir}/metrics_{config_name}.json
-
-A companion script (gnn_ablation_aggregate.py) collects all JSON files
-into a summary CSV and heatmap after all array tasks complete.
-
-Usage (standalone — for testing a single config):
-    python gnn_ablation_sweep.py --task-id 0
-
-Usage (SLURM array — submit via run_gnn_ablation.sbatch):
-    sbatch --array=0-44 run_gnn_ablation.sbatch
-"""
 
 from __future__ import annotations
 
@@ -43,16 +15,12 @@ from ktn_dataset import KTNDataset
 from train_gnn_v2 import sparsify_graph, enrich_node_features, train_single_config
 
 
-
-
-
-
 TOP_K_VALUES = [5, 10, 20, 50, 100]
 HIDDEN_DIM_VALUES = [32, 64, 128]
 N_LAYERS_VALUES = [2, 3, 4]
 
 def build_grid():
-    """Build a flat list of all (top_k, hidden_dim, n_layers) configs."""
+
     grid = []
     for k in TOP_K_VALUES:
         for h in HIDDEN_DIM_VALUES:
@@ -62,10 +30,6 @@ def build_grid():
 
 GRID = build_grid()
 N_CONFIGS = len(GRID)
-
-
-
-
 
 
 def main():

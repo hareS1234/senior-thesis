@@ -1,29 +1,5 @@
 #!/usr/bin/env python
-"""
-landscape_class_tests.py
 
-Statistical tests for kinetic differences between disconnectivity-graph
-landscape classes (single-funnel, moderately frustrated, multi-funnel).
-
-Tests performed:
-    1. Kruskal-Wallis H-test across three classes (non-parametric one-way ANOVA)
-    2. Pairwise Mann-Whitney U tests with Bonferroni correction
-    3. Effect sizes (rank-biserial correlation for each pair)
-
-Targets: log10(MFPT_AB), log10(MFPT_BA), log10(t1), t1/t2
-
-Outputs
--------
-  {out_dir}/kruskal_wallis_results.csv        — H statistic, p-value per target
-  {out_dir}/mann_whitney_pairwise.csv          — all pairwise comparisons
-  {out_dir}/landscape_class_descriptive.csv    — per-class descriptive stats
-  {out_dir}/fig_landscape_class_boxplots.pdf   — box + strip plots per target
-
-Usage:
-    python landscape_class_tests.py \
-        --targets-csv GTcheck_micro_vs_coarse_T300K_full.csv \
-        --out-dir landscape_class_tests
-"""
 
 from __future__ import annotations
 
@@ -40,10 +16,6 @@ import matplotlib.pyplot as plt
 from scipy import stats
 
 warnings.filterwarnings("ignore", category=UserWarning)
-
-
-
-
 
 
 LANDSCAPE_CLASSES = {
@@ -90,32 +62,15 @@ CLASS_DISPLAY = {
 }
 
 
-
-
-
-
 def rank_biserial(x: np.ndarray, y: np.ndarray) -> float:
-    """
-    Rank-biserial correlation r_rb as effect size for Mann-Whitney U.
 
-        r_rb = 1 - 2U / (n1 * n2)
-
-    Interpretation:
-        |r_rb| < 0.3  : small
-        0.3-0.5       : medium
-        > 0.5         : large
-    """
     res = stats.mannwhitneyu(x, y, alternative="two-sided")
     n1, n2 = len(x), len(y)
     return 1.0 - (2.0 * res.statistic) / (n1 * n2)
 
 
-
-
-
-
 def load_and_classify(targets_csv: Path) -> pd.DataFrame:
-    """Load GT validation CSV and assign landscape classes."""
+
     df = pd.read_csv(targets_csv)
 
 
@@ -146,13 +101,7 @@ def load_and_classify(targets_csv: Path) -> pd.DataFrame:
 
 
 def finite_analysis_subset(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Restrict to the networks used for the class-level kinetic comparison.
 
-    The main-text table groups the 36 systems with complete coarse observables,
-    so the statistical tests should operate on the same subset rather than on
-    whichever rows happen to be finite target-by-target.
-    """
     required = ["log_MFPT_AB", "log_MFPT_BA", "log_t1", "t1_over_t2"]
     keep = np.ones(len(df), dtype=bool)
     for col in required:
@@ -160,10 +109,6 @@ def finite_analysis_subset(df: pd.DataFrame) -> pd.DataFrame:
             raise KeyError(f"Required target '{col}' missing after preprocessing.")
         keep &= np.isfinite(pd.to_numeric(df[col], errors="coerce"))
     return df.loc[keep].copy()
-
-
-
-
 
 
 TARGET_COLS = {

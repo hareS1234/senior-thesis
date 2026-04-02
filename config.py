@@ -84,15 +84,7 @@ class MarkovFilePaths:
 
 
 def iter_dps_dirs(base_dir: Path | None = None) -> list[Path]:
-    """Return sorted DPS directories under `base_dir` (defaults to `BASE_DIR`).
 
-    Directory structure expected:
-        base_dir/
-            <sequence>_nocap/
-                <dps>_nocap/
-                    min.data
-                    ts.data
-    """
     root = base_dir if base_dir is not None else BASE_DIR
 
     dps_dirs: list[Path] = []

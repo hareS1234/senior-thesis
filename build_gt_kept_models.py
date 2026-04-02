@@ -1,35 +1,5 @@
 #!/usr/bin/env python3
-"""
-build_gt_kept_models.py
 
-Create GT-eliminated ("kept") coarse-grained CTMC models from microscopic KTN data.
-
-For each markov_T{T}K/ directory, we:
-  1) Load B, tau, pi, and original_min_ids (micro model)
-  2) Build A/B selectors from min.A/min.B (always retained)
-  3) Choose additional kept minima using a percentile-based criterion
-     (recommended: style='hybrid' using both free energy -log(pi) and escape time tau)
-  4) Apply NGT / graph transformation to eliminate all other nodes:
-        B_eff, tau_eff, Q_eff = PyGT.GT.blockGT(rm_vec, B, tau, rates=True, ...)
-  5) Save coarse model to: markov_T{T}K/GT_kept_T{T}K/
-
-Outputs per markov_T{T}K/:
-  GT_kept_T{T}K/
-      B_eff_T{T}K.npz
-      Q_eff_T{T}K.npz
-      tau_eff_T{T}K.npy
-      pi_eff_T{T}K.npy
-      original_min_ids_eff_T{T}K.npy
-      kept_mask_eff_T{T}K.npy
-      micro_to_eff_index_T{T}K.npy
-      A_states_T{T}K.npy
-      B_states_T{T}K.npy
-
-Notes:
-- Uses column-sum convention for Q.
-- pi_eff is taken as pi restricted to kept states and renormalized, then checked
-  against Q_eff; if the stationarity residual is poor, we fall back to solving Q_eff pi=0.
-"""
 
 from __future__ import annotations
 
@@ -44,9 +14,6 @@ from scipy.sparse import csr_matrix, diags, isspmatrix, load_npz, save_npz
 from scipy.sparse.linalg import spsolve
 
 import PyGT.GT as GT
-
-
-
 
 
 TAG_RE = re.compile(r"^markov_(T\d+K)$")
@@ -79,15 +46,8 @@ def iter_markov_dirs(root: Path, only_T: Optional[int]) -> Iterable[Path]:
         yield md
 
 
-
-
-
 def _read_min_set(path: Path) -> np.ndarray:
-    """
-    Read PATHSAMPLE min.A/min.B:
-      - either: first entry is count, followed by that many IDs
-      - or: plain list of IDs
-    """
+
     if not path.exists():
         return np.array([], dtype=int)
     data = np.loadtxt(path, dtype=int, ndmin=1)
@@ -112,9 +72,6 @@ def make_AB_selectors(dps_dir: Path, orig_ids: np.ndarray) -> Tuple[np.ndarray, 
     return A_sel, B_sel
 
 
-
-
-
 def choose_rm_vec(
     pi: np.ndarray,
     tau: np.ndarray,
@@ -123,12 +80,7 @@ def choose_rm_vec(
     percent_retained: float,
     min_kept: int,
 ) -> np.ndarray:
-    """
-    Return rm_vec (True = remove) using percentile rules similar to PyGT.tools.choose_nodes_to_remove,
-    but implemented here explicitly (and without the node_degree signature bug).
 
-    rm_region = nodes we are allowed to remove (i.e. not must_keep).
-    """
     if pi.ndim != 1 or tau.ndim != 1:
         raise ValueError("pi and tau must be 1D arrays.")
     if pi.shape[0] != tau.shape[0] or pi.shape[0] != must_keep.shape[0]:
@@ -196,13 +148,8 @@ def choose_rm_vec(
     return rm_vec
 
 
-
-
-
 def stationarity_residual(Q: csr_matrix, pi: np.ndarray) -> Tuple[float, float, float]:
-    """
-    Returns (||Q pi||_1, || |Q| pi ||_1, relative).
-    """
+
     r = np.linalg.norm((Q @ pi), 1)
     s = np.linalg.norm((abs(Q) @ pi), 1)
     rel = (r / s) if s > 0 else np.nan
@@ -210,9 +157,7 @@ def stationarity_residual(Q: csr_matrix, pi: np.ndarray) -> Tuple[float, float, 
 
 
 def solve_stationary(Q: csr_matrix) -> np.ndarray:
-    """
-    Solve Q pi = 0 with sum(pi)=1 by replacing the first row with ones.
-    """
+
     N = Q.shape[0]
     A = Q.tolil()
     b = np.zeros(N, dtype=float)
@@ -225,9 +170,6 @@ def solve_stationary(Q: csr_matrix) -> np.ndarray:
     if s <= 0:
         raise RuntimeError("Failed to compute stationary distribution (sum <= 0).")
     return pi / s
-
-
-
 
 
 @dataclass
@@ -322,7 +264,6 @@ def build_one(markov_dir: Path, style: str, percent_retained: float, min_kept: i
         keep_mask[must_keep] = True
         rm_vec = ~keep_mask
         N_eff_target = int(keep_mask.sum())
-
 
 
     B_eff, tau_eff, Q_eff = GT.blockGT(

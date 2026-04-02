@@ -1,17 +1,5 @@
 #!/usr/bin/env python3
-"""
-make_micro_report.py
 
-Scan a root folder (e.g. .../LAMMPS_uncapped) for fine-grained markov_T*K folders
-and generate a clear report of kinetic + validation numbers.
-
-Outputs:
-  - micro_report.csv : machine-readable table
-  - micro_report.txt : human-readable report grouped by sequence and T
-
-Designed for your directory structure like:
-  LAMMPS_uncapped/<seq>_nocap/<seq>_99idps_nocap/markov_T300K/
-"""
 
 from __future__ import annotations
 
@@ -23,10 +11,6 @@ from typing import Dict, Optional, Tuple
 
 import numpy as np
 from scipy.sparse import load_npz
-
-
-
-
 
 
 def parse_tag_from_markov_dir(markov_dir: Path) -> str:
@@ -55,7 +39,7 @@ def find_first_existing(paths):
 
 
 def read_min_set(path: Path) -> np.ndarray:
-    """Read min.A / min.B (PATHSAMPLE style). Handles optional count in first entry."""
+
     if not path.exists():
         return np.array([], dtype=int)
     data = np.loadtxt(path, dtype=int, ndmin=1)
@@ -82,10 +66,7 @@ def load_orig_ids(markov_dir: Path, tag: str) -> Optional[np.ndarray]:
 
 
 def load_AB_selectors(markov_dir: Path, dps_dir: Path, tag: str) -> Tuple[Optional[np.ndarray], Optional[np.ndarray]]:
-    """
-    Prefer A_states/B_states in markov_dir (already aligned to Q indexing).
-    Fall back to min.A/min.B + original_min_ids mapping if needed.
-    """
+
     A_states = markov_dir / f"A_states_{tag}.npy"
     B_states = markov_dir / f"B_states_{tag}.npy"
     if A_states.exists() and B_states.exists():
@@ -111,9 +92,7 @@ def load_AB_selectors(markov_dir: Path, dps_dir: Path, tag: str) -> Tuple[Option
 
 
 def load_mfpt_npz(markov_dir: Path, tag: str) -> Dict[str, float]:
-    """
-    Load MFPT info from AB_kinetics_{tag}.npz, handling key name variations.
-    """
+
     out: Dict[str, float] = {}
     f = markov_dir / f"AB_kinetics_{tag}.npz"
     if not f.exists():
@@ -139,9 +118,7 @@ def load_mfpt_npz(markov_dir: Path, tag: str) -> Dict[str, float]:
 
 
 def stationarity_metrics(Q, pi) -> Tuple[float, float, float]:
-    """
-    Return (||Q pi||_1, || |Q| pi ||_1, relative).
-    """
+
     qpi = Q @ pi
     res = float(np.linalg.norm(np.asarray(qpi).ravel(), 1))
 
@@ -155,9 +132,7 @@ def stationarity_metrics(Q, pi) -> Tuple[float, float, float]:
 
 
 def generator_sanity(Q, tol: float = 1e-12) -> Dict[str, float]:
-    """
-    Check sign pattern + conservation style diagnostics.
-    """
+
     info: Dict[str, float] = {}
     Qcoo = Q.tocoo()
     diag_mask = (Qcoo.row == Qcoo.col)
@@ -176,18 +151,11 @@ def generator_sanity(Q, tol: float = 1e-12) -> Dict[str, float]:
 
 
 def infer_system_label(root: Path, markov_dir: Path) -> str:
-    """
-    Use the first directory under root as the system label
-    (e.g. aaaaaa_nocap, yyggyy_dimer, etc.).
-    """
+
     rel = markov_dir.relative_to(root)
     if len(rel.parts) == 0:
         return markov_dir.parent.name
     return rel.parts[0]
-
-
-
-
 
 
 def collect_one(markov_dir: Path, root: Path) -> Dict[str, object]:

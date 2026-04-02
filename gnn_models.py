@@ -1,14 +1,5 @@
 #!/usr/bin/env python
-"""
-gnn_models.py
 
-GNN architectures for KTN property prediction.
-
-Three model types:
-    KTNNodeModel      — per-node prediction (committor, MFPT)
-    KTNGraphModel     — graph-level prediction (MFPT_AB, t1, etc.)
-    KTNMultiTaskModel — shared backbone, two heads (node + graph)
-"""
 
 from __future__ import annotations
 
@@ -26,21 +17,8 @@ from torch_geometric.nn import (
 )
 
 
-
-
-
-
 class MPBackbone(nn.Module):
-    """
-    Shared message-passing backbone for all KTN models.
 
-    Architecture:
-        Input MLP  →  L layers of (Conv + BN + ReLU + Dropout + Residual)
-
-    Supports conv_type: "nnconv", "gat", "gcn", "gin".
-    NNConv is the default because edge features (rates, barriers) carry
-    the kinetic information that distinguishes transitions.
-    """
 
     def __init__(
         self,
@@ -66,7 +44,6 @@ class MPBackbone(nn.Module):
 
         for _ in range(n_layers):
             if conv_type == "nnconv":
-
 
 
                 bottleneck = max(hidden_dim // 4, 8)
@@ -116,18 +93,8 @@ class MPBackbone(nn.Module):
         return x
 
 
-
-
-
-
 class KTNNodeModel(nn.Module):
-    """
-    GNN for per-node prediction (committor or MFPT).
 
-    Output: one value per node.
-    For committor: apply sigmoid to bound in [0,1].
-    For MFPT: linear output (in log-space).
-    """
 
     def __init__(
         self,
@@ -159,16 +126,8 @@ class KTNNodeModel(nn.Module):
         return out
 
 
-
-
-
-
 class KTNGraphModel(nn.Module):
-    """
-    GNN for graph-level prediction (MFPT_AB, t1, etc.).
 
-    Backbone → global pooling → MLP → n_targets outputs.
-    """
 
     def __init__(
         self,
@@ -204,20 +163,8 @@ class KTNGraphModel(nn.Module):
         return self.output_mlp(graph_emb)
 
 
-
-
-
-
 class KTNMultiTaskModel(nn.Module):
-    """
-    Joint node + graph prediction with a shared backbone.
 
-    Two output heads:
-        node_head:  per-node predictions (committor or MFPT)
-        graph_head: readout → graph-level targets
-
-    Training loss: alpha * node_loss + (1 - alpha) * graph_loss
-    """
 
     def __init__(
         self,

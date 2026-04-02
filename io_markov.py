@@ -1,11 +1,5 @@
 #!/usr/bin/env python
-"""
-io_markov.py
 
-Helpers for loading microscopic or coarse-grained Markov models
-built by build_markov_model.py and coarse_grain_markov.py, and for
-getting A/B macrostates in the appropriate indexing.
-"""
 
 from __future__ import annotations
 
@@ -19,17 +13,17 @@ from PyGT.io import load_ktn_AB
 
 
 def temp_tag(T: float) -> str:
-    """Format temperature tag, e.g. 300.0 -> 'T300K'."""
+
     return f"T{int(round(T))}K"
 
 
 def markov_dir_for_T(data_dir: Path, T: float) -> Path:
-    """Directory where build_markov_model.py writes its outputs."""
+
     return data_dir / f"markov_{temp_tag(T)}"
 
 
 def coarse_dir_for_T(markov_dir: Path, T: float) -> Path:
-    """Directory where coarse_grain_markov.py writes GT outputs."""
+
     tag = temp_tag(T)
     return markov_dir / f"GT_kept_{tag}"
 
@@ -46,32 +40,7 @@ def load_markov(
     T: float,
     coarse: bool = False,
 ) -> Tuple[sp.csr_matrix, sp.csr_matrix, sp.csr_matrix, np.ndarray, np.ndarray]:
-    """
-    Load B, K, Q, tau, pi for microscopic or coarse-grained model.
 
-    Parameters
-    ----------
-    data_dir : Path
-        DPS directory containing min.data, ts.data, and markov_TxxxK/.
-    T : float
-        Temperature in Kelvin (must match build_markov_model.py).
-    coarse : bool
-        If False: microscopic model in markov_TxxxK/.
-        If True : coarse model in markov_TxxxK/GT_kept_TxxxK/.
-
-    Returns
-    -------
-    B : csr_matrix
-        Branching probability matrix (columns sum to 1, zero diagonals).
-    K : csr_matrix
-        Off-diagonal rate matrix k_{i<-j}.
-    Q : csr_matrix
-        Generator matrix (columns sum to zero).
-    tau : ndarray (N,)
-        Mean waiting times in each state.
-    pi : ndarray (N,)
-        Stationary distribution.
-    """
     tag = temp_tag(T)
     markov_dir = markov_dir_for_T(data_dir, T)
 
@@ -119,22 +88,7 @@ def load_AB_selectors(
     T: float,
     coarse: bool = False,
 ) -> Tuple[Optional[np.ndarray], Optional[np.ndarray]]:
-    """
-    Get A/B macrostates for the microscopic or coarse model.
 
-    Minima in A and B are specified by PATHSAMPLE files min.A and min.B.
-    For the microscopic model, we use PyGT.io.load_ktn_AB with the same
-    retained mask as build_markov_model.py.
-
-    For the coarse model, we map those A/B labels onto the retained
-    minima in the GT-reduced network using the original minima IDs.
-
-    Returns
-    -------
-    A_sel, B_sel : ndarray[bool] or (None, None)
-        Boolean selectors in the *current* indexing (microscopic or coarse).
-        If min.A/min.B are missing, returns (None, None).
-    """
     tag = temp_tag(T)
     markov_dir = markov_dir_for_T(data_dir, T)
     retained_path = markov_dir / f"retained_mask_{tag}.npy"

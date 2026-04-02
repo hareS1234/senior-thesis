@@ -1,21 +1,5 @@
 #!/usr/bin/env python
-"""
-gnn_ablation_aggregate.py
 
-Collect all per-config JSON files from the GNN ablation sweep into a
-single summary CSV and generate a heatmap of R² vs hyperparameters.
-
-Run this AFTER all SLURM array tasks from run_gnn_ablation.sbatch complete.
-
-Outputs
--------
-  {out_dir}/gnn_ablation_summary.csv           — full results table
-  {out_dir}/fig_gnn_ablation_heatmap.pdf       — heatmaps: R² by (k, h, L)
-  {out_dir}/fig_gnn_ablation_best_vs_worst.pdf — bar chart of top and bottom configs
-
-Usage:
-    python gnn_ablation_aggregate.py --results-dir gnn_ablation_results
-"""
 
 from __future__ import annotations
 

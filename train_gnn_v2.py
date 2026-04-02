@@ -1,18 +1,5 @@
 #!/usr/bin/env python
-"""
-train_gnn_v2.py
 
-Improved GNN node-level training with three enhancements over v1:
-    1. Graph sparsification: keep only top-k edges per node by rate
-    2. Rate-enriched node features: inject edge-weight statistics into nodes
-    3. Automatic comparison of conv types (GCN, GAT, NNConv)
-
-Designed for CPU-only training on dense KTN graphs.
-
-Usage:
-    python train_gnn_v2.py --top-k 20 --task committor
-    python train_gnn_v2.py --top-k 20 --conv-types gcn gat nnconv
-"""
 
 from __future__ import annotations
 
@@ -38,21 +25,8 @@ from ktn_dataset import KTNDataset
 from gnn_models import KTNNodeModel
 
 
-
-
-
-
 def sparsify_graph(data: Data, top_k: int = 20) -> Data:
-    """
-    Keep only the top-k strongest edges per node (by forward log-rate).
 
-    For each node j, keep the top_k outgoing edges with highest transition
-    rate. This preserves the kinetically dominant pathways while drastically
-    reducing density.
-
-    Also keeps all reverse edges of retained edges to maintain symmetry
-    information.
-    """
     edge_index = data.edge_index
     edge_attr = data.edge_attr
     N = data.x.shape[0]
@@ -63,7 +37,6 @@ def sparsify_graph(data: Data, top_k: int = 20) -> Data:
 
     src = edge_index[0].numpy()
     tgt = edge_index[1].numpy()
-
 
 
     rates = edge_attr[:, 0].numpy()
@@ -79,7 +52,6 @@ def sparsify_graph(data: Data, top_k: int = 20) -> Data:
         else:
             top_idx = out_idx[np.argsort(rates[out_idx])[-top_k:]]
             keep_mask[top_idx] = True
-
 
 
     kept_pairs = set()
@@ -100,25 +72,8 @@ def sparsify_graph(data: Data, top_k: int = 20) -> Data:
     return new_data
 
 
-
-
-
-
 def enrich_node_features(data: Data) -> Data:
-    """
-    Add rate-derived statistics to each node's feature vector.
 
-    New features per node (appended to existing 9 features):
-        9:  mean outgoing log-rate
-        10: max outgoing log-rate
-        11: mean incoming log-rate
-        12: max incoming log-rate
-        13: total branching probability (sum of outgoing B_ij)
-        14: degree (number of edges, normalized by graph size)
-
-    This gives GCN access to rate information through node features,
-    even though GCN cannot use edge attributes directly.
-    """
     x = data.x
     edge_index = data.edge_index
     edge_attr = data.edge_attr
@@ -161,10 +116,6 @@ def enrich_node_features(data: Data) -> Data:
     return data
 
 
-
-
-
-
 def train_single_config(
     data_list: list,
     task: str,
@@ -183,7 +134,7 @@ def train_single_config(
     config_name: str,
     out_dir: Path,
 ) -> Dict:
-    """Train a single node-level model configuration and return metrics."""
+
 
     torch.manual_seed(seed)
     np.random.seed(seed)
@@ -380,10 +331,6 @@ def train_single_config(
     return metrics
 
 
-
-
-
-
 def main():
     parser = argparse.ArgumentParser(
         description="GNN v2: sparsification + rate-enriched features + conv comparison")
@@ -449,7 +396,6 @@ def main():
     all_results = []
 
     for conv_type in args.conv_types:
-
 
 
         if conv_type in ("gcn", "gin"):

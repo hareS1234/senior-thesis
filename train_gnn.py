@@ -1,19 +1,5 @@
 #!/usr/bin/env python
-"""
-train_gnn.py
 
-Training and evaluation for GNN models on KTN data.
-
-Supports three modes:
-    --mode node     : Node-level training (committor or MFPT)
-    --mode graph    : Graph-level LOO-CV (predict MFPT_AB, t1, etc.)
-    --mode multitask: Pretrain on node targets, finetune for graph targets
-
-Usage:
-    python train_gnn.py --mode node   --root ktn_pyg_data --task committor
-    python train_gnn.py --mode graph  --root ktn_pyg_data --target 0
-    python train_gnn.py --mode multitask --root ktn_pyg_data
-"""
 
 from __future__ import annotations
 
@@ -42,14 +28,10 @@ TARGET_NAMES = ["log_MFPT_coarse_AB", "log_MFPT_coarse_BA", "log_t1", "t1_over_t
 
 
 def resolve_device(device: str = "auto") -> torch.device:
-    """Resolve requested device string to a torch.device."""
+
     if device == "auto":
         return torch.device("cuda" if torch.cuda.is_available() else "cpu")
     return torch.device(device)
-
-
-
-
 
 
 def train_node_level(
@@ -69,12 +51,7 @@ def train_node_level(
     max_grad_norm: float = 1.0,
     out_dir: Path = Path("gnn_results"),
 ) -> Dict[str, float]:
-    """
-    Train node-level model across all graphs.
 
-    80% of interior nodes (not A/B) are training, 20% validation.
-    A/B nodes have fixed targets and are always in training.
-    """
     torch.manual_seed(seed)
     np.random.seed(seed)
 
@@ -277,10 +254,6 @@ def train_node_level(
     return metrics
 
 
-
-
-
-
 def train_graph_level_loocv(
     dataset,
     target_idx: int = 0,
@@ -297,12 +270,7 @@ def train_graph_level_loocv(
     max_grad_norm: float = 1.0,
     out_dir: Path = Path("gnn_results"),
 ) -> Dict[str, float]:
-    """
-    Leave-one-out CV for graph-level prediction.
 
-    For each held-out graph: train fresh model on N-1 graphs, predict held-out.
-    Ensemble over n_seeds random initializations.
-    """
     target_name = TARGET_NAMES[target_idx]
 
 
@@ -460,10 +428,6 @@ def train_graph_level_loocv(
     return metrics
 
 
-
-
-
-
 def train_multitask(
     dataset,
     target_idx: int = 0,
@@ -483,11 +447,7 @@ def train_multitask(
     max_grad_norm: float = 1.0,
     out_dir: Path = Path("gnn_results"),
 ) -> Dict[str, float]:
-    """
-    Two-stage training with LOO-CV:
-        1. Pre-train shared backbone on node-level task (all training graphs)
-        2. Fine-tune graph head (freeze backbone optionally)
-    """
+
     target_name = TARGET_NAMES[target_idx]
     target_attr = "committor" if node_task == "committor" else "mfpt_to_B"
 
@@ -660,10 +620,6 @@ def train_multitask(
              y_true=y_true, y_pred=y_pred_final)
 
     return metrics
-
-
-
-
 
 
 def main():

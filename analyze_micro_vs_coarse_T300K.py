@@ -1,34 +1,5 @@
 #!/usr/bin/env python3
-"""
-analyze_micro_vs_coarse_T300K.py
 
-Compares micro vs GT-kept coarse MFPTs and generates a single CSV suitable for
-all subsequent analysis (validation + eigenvalue-based graph metrics).
-
-Expected directory layout under --root (LAMMPS_uncapped):
-  <root>/<system>/<dps_dir>/markov_T300K/
-    AB_kinetics_T300K.npz
-    pi_T300K.npy
-    Q_T300K.npz                         (optional, only for micro sanity; not required)
-  <root>/<system>/<dps_dir>/markov_T300K/GT_kept_T300K/
-    AB_kinetics_T300K.npz               (from mfpt_analysis.py --coarse)
-    pi_eff_T300K.npy
-    Q_eff_T300K.npz
-    eigenvalues_T300K.npy               (optional)
-    timescales_T300K.npy                (optional)
-    A_states_T300K.npy / B_states_T300K.npy (optional, from GT builder)
-
-Outputs (in current working directory unless you pass --out-dir):
-  - micro_vs_coarse_T300K_full.csv
-  - micro_vs_coarse_T300K_summary.txt
-
-Core validation logic:
-  - MFPT alignment: relative error below --mfpt-rtol
-  - stationarity: ||Q pi||_1 / || |Q| pi ||_1 below --stationarity-rtol
-  - sign checks: no negative off-diagonals, no positive diagonals (within tol)
-  - A/B retained: nA,nB in coarse are >0 (ideally 1 and 1 here)
-  - graph connectivity: number of undirected components (should usually be 1)
-"""
 
 from __future__ import annotations
 
@@ -41,10 +12,6 @@ from typing import Any, Dict, Optional, Tuple, List
 import numpy as np
 from scipy.sparse import load_npz, csr_matrix
 from scipy.sparse.csgraph import connected_components
-
-
-
-
 
 
 def parse_tag(T: int) -> str:
@@ -100,10 +67,7 @@ def log10_ratio(a: float, b: float) -> float:
 
 
 def generator_sanity(Q: csr_matrix, tol: float) -> Dict[str, float]:
-    """
-    Sign checks + conservation diagnostics.
-    Assumes Q is sparse and includes diagonal.
-    """
+
     Qcoo = Q.tocoo()
     diag_mask = (Qcoo.row == Qcoo.col)
     diag = Qcoo.data[diag_mask]
@@ -131,9 +95,7 @@ def generator_sanity(Q: csr_matrix, tol: float) -> Dict[str, float]:
 
 
 def stationarity_metrics(Q: csr_matrix, pi: np.ndarray) -> Tuple[float, float, float]:
-    """
-    Returns (||Q pi||_1, || |Q| pi ||_1, relative).
-    """
+
     qpi = Q @ pi
     res = float(np.linalg.norm(np.asarray(qpi).ravel(), 1))
 
@@ -146,14 +108,7 @@ def stationarity_metrics(Q: csr_matrix, pi: np.ndarray) -> Tuple[float, float, f
 
 
 def graph_metrics_from_Q(Q: csr_matrix) -> Dict[str, float]:
-    """
-    Graph metrics on the coarse network, using adjacency from nonzero off-diagonal rates.
 
-    We compute:
-      - directed edges (nonzero off-diagonals)
-      - mean/min/max in-degree (row nnz) and out-degree (column nnz) excluding diagonal
-      - undirected components count + largest component fraction
-    """
 
     A = Q.copy().tocsr()
     A.setdiag(0)
@@ -220,10 +175,6 @@ def iter_dps_dirs(root: Path, tag: str) -> List[Path]:
     markov_dirs = sorted(root.glob(f"*/*/markov_{tag}"))
     dps_dirs = sorted({p.parent for p in markov_dirs})
     return dps_dirs
-
-
-
-
 
 
 def main():

@@ -1,15 +1,4 @@
-"""
-summaries_and_regression.py
 
-Quick analysis of the aggregated per-run summaries:
-
-- load all_sequences_summary.csv
-- basic sanity checks
-- example regressions (e.g. MFPT vs barrier distances)
-- save a couple of small CSVs / plots you can drop into the thesis.
-
-You will almost certainly tweak/extend this in thesis_analysis.ipynb.
-"""
 
 from __future__ import annotations
 
@@ -34,12 +23,7 @@ def load_summary() -> pd.DataFrame:
 
 
 def simple_regressions(df: pd.DataFrame):
-    """
-    Example regressions:
-    - log(MFPT_AB) vs avg_barrier_AB
-    - log(MFPT_AB) vs min_barrier_AB
-    - log(MFPT_AB) vs avg_rate_length_AB
-    """
+
 
     df = df.copy()
     df = df[df["has_AB"]]

@@ -1,31 +1,5 @@
 #!/usr/bin/env python
-"""
-generate_basin_keep_lists.py
 
-Basin-based keep-list generation for PATHSAMPLE DPS directories.
-
-- Walks a root directory recursively.
-- For every folder containing both min.data and ts.data,
-  it builds a basin-based keep set using a barrier-height
-  threshold ΔE_cut and writes:
-
-  keep_minima_dE{ΔE_cut}.txt
-  keep_minima.txt      (copy of the same list, for compatibility)
-
-Basin definition:
-- Nodes: minima.
-- Edge i--j exists if there is at least one TS with
-      ΔE_ij = E_TS - min(E_i, E_j) <= ΔE_cut.
-- Basins = connected components of this graph.
-
-Kept minima K:
-- All minima listed in min.A and min.B (if present),
-- The lowest-energy minimum in each connected component,
-- The global minimum,
-- Optionally, any minimum with E - Emin <= E_window.
-
-All indices are original PATHSAMPLE minimum IDs (1-based).
-"""
 
 from __future__ import annotations
 
@@ -37,10 +11,8 @@ from typing import Dict, List, Set, Tuple
 import numpy as np
 
 
-
-
 def read_min_energies(min_data_path: Path) -> np.ndarray:
-    """Read energies (first column) from min.data."""
+
     if not min_data_path.exists():
         raise FileNotFoundError(f"{min_data_path} not found")
     E = np.loadtxt(min_data_path, usecols=0)
@@ -48,7 +20,7 @@ def read_min_energies(min_data_path: Path) -> np.ndarray:
 
 
 def read_min_list(path: Path) -> List[int]:
-    """Read a PATHSAMPLE list file (min.A or min.B), first int per line."""
+
     if not path.exists():
         return []
     ids: List[int] = []
@@ -66,16 +38,7 @@ def read_min_list(path: Path) -> List[int]:
 
 
 def read_ts_file(ts_path: Path) -> List[Tuple[float, int, int]]:
-    """
-    Read ts.data and return a list of (E_ts, min1, min2).
 
-    NOTE: This assumes the standard PATHSAMPLE format where:
-        column 1 = TS energy
-        column 4 = index of first minimum
-        column 5 = index of second minimum
-
-    If your ts.data format differs, adjust the column indices below.
-    """
     if not ts_path.exists():
         raise FileNotFoundError(f"{ts_path} not found")
 
@@ -91,7 +54,6 @@ def read_ts_file(ts_path: Path) -> List[Tuple[float, int, int]]:
                 E_ts = float(parts[0])
 
 
-
                 min1 = int(parts[3])
                 min2 = int(parts[4])
             except (ValueError, IndexError):
@@ -101,20 +63,12 @@ def read_ts_file(ts_path: Path) -> List[Tuple[float, int, int]]:
     return ts_records
 
 
-
-
 def build_low_barrier_graph(
     E: np.ndarray,
     ts_records: List[Tuple[float, int, int]],
     deltaE_cut: float,
 ) -> Dict[int, Set[int]]:
-    """
-    Build an undirected adjacency list on minima using barrier threshold ΔE_cut.
 
-    Nodes: minima indices (1-based).
-    Edge i--j if there exists at least one TS with
-        ΔE_ij = E_TS - min(E_i, E_j) <= deltaE_cut.
-    """
     n_min = E.shape[0]
     adj: Dict[int, Set[int]] = {i: set() for i in range(1, n_min + 1)}
 
@@ -131,10 +85,7 @@ def build_low_barrier_graph(
 
 
 def connected_components(adj: Dict[int, Set[int]]) -> List[List[int]]:
-    """
-    Return list of connected components (as lists of node IDs)
-    for an undirected graph given by adjacency list 'adj'.
-    """
+
     visited: Set[int] = set()
     comps: List[List[int]] = []
 
@@ -162,22 +113,7 @@ def build_basin_keep_set(
     deltaE_cut: float,
     E_window: float | None = None,
 ) -> List[int]:
-    """
-    Construct a basin-based keep set K for a single DPS directory.
 
-    Parameters
-    ----------
-    data_dir : Path
-        Directory containing min.data, ts.data, and optionally min.A/min.B.
-    deltaE_cut : float
-        Barrier threshold. Edge i--j if ΔE_ij <= deltaE_cut.
-    E_window : float or None
-        If not None, also include all minima with E - Emin <= E_window.
-
-    Returns
-    -------
-    keep_ids : sorted list of unique 1-based minima indices.
-    """
     min_data_path = data_dir / "min.data"
     ts_data_path = data_dir / "ts.data"
 
@@ -225,20 +161,13 @@ def build_basin_keep_set(
     return keep_ids
 
 
-
-
 def write_keep_files(
     data_dir: Path,
     keep_ids: List[int],
     deltaE_cut: float,
     overwrite: bool = False,
 ) -> None:
-    """
-    Write both:
-      - keep_minima_dE{deltaE_cut}.txt
-      - keep_minima.txt              (copy, for PyGT/PATHSAMPLE)
-    in data_dir.
-    """
+
     label = f"dE{deltaE_cut:.2f}".replace(".", "p")
     fname_labelled = f"keep_minima_{label}.txt"
     path_labelled = data_dir / fname_labelled
@@ -262,13 +191,8 @@ def write_keep_files(
         print(f"[SKIP] keep_minima.txt exists and --overwrite not set.")
 
 
-
-
 def find_dps_dirs(root: Path) -> List[Path]:
-    """
-    Find all directories under 'root' that contain both min.data and ts.data.
-    These are treated as DPS directories (monomer/dimer, 19sb/99idps, etc.).
-    """
+
     dps_dirs: List[Path] = []
     for min_file in root.rglob("min.data"):
         data_dir = min_file.parent

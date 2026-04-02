@@ -1,15 +1,5 @@
 #!/usr/bin/env python
-"""
-graph_features.py
 
-Compute graph-theoretic and sequence-derived features for each coarse-grained
-KTN at a given temperature.  Outputs a single CSV with one row per network
-and ~65 features spanning sequence composition, distance, spectral,
-centrality, community, path, and topology categories.
-
-Usage (on the cluster):
-    python graph_features.py --out graph_features_coarse_T300K.csv
-"""
 
 from __future__ import annotations
 
@@ -33,11 +23,6 @@ ALL_FEATURE_GROUPS = ("sequence", "distance", "spectral", "centrality", "communi
 LITE_FEATURE_GROUPS = ("sequence", "distance", "spectral", "centrality", "topology")
 
 
-
-
-
-
-
 AA_HYDRO = {
     "A": 1.8, "C": 2.5, "D": -3.5, "E": -3.5, "F": 2.8, "G": -0.4,
     "H": -3.2, "I": 4.5, "K": -3.9, "L": 3.8, "M": 1.9, "N": -3.5,
@@ -47,15 +32,7 @@ AA_HYDRO = {
 
 
 def compute_sequence_features(seq: str) -> Dict[str, float]:
-    """
-    Compute amino-acid composition features from the peptide sequence.
 
-    These capture LLPS-relevant physicochemical properties:
-      - Arginine content (cation-pi interactions, charge patterning)
-      - Net charge and charge fractions (electrostatic driving forces)
-      - Hydropathy (Kyte-Doolittle mean, phase separation propensity)
-      - Aromatic content (pi-pi stacking interactions)
-    """
     seq = (seq or "").strip().upper()
     L = len(seq)
     nan_feats = {
@@ -97,26 +74,8 @@ def compute_sequence_features(seq: str) -> Dict[str, float]:
     }
 
 
-
-
-
-
 def _branching_length_matrix(B: csr_matrix) -> csr_matrix:
-    """Build a sparse *adjacency/length* matrix for Dijkstra on the branching graph.
 
-    Conventions
-    ----------
-    The branching matrix uses the same convention as the rates:
-        B[i, j] = P(jump to i | leaving j) = B_{i <- j}
-
-    SciPy's `shortest_path` expects an adjacency matrix A where A[src, dst] is
-    the edge weight from `src` to `dst`. Therefore we must *transpose* the
-    (i <- j) storage convention:
-
-        L[src=j, dst=i] = -log(B[i, j])
-
-    This yields non-negative edge weights suitable for Dijkstra's algorithm.
-    """
     B_coo = B.tocoo()
     mask = B_coo.data > 0
 
@@ -127,26 +86,7 @@ def _branching_length_matrix(B: csr_matrix) -> csr_matrix:
 
 
 def _rate_length_matrix(K: csr_matrix, min_rate: float = 1e-300) -> csr_matrix:
-    """Build a sparse *adjacency/length* matrix for shortest paths on the rate graph.
 
-    Conventions
-    ----------
-    K[i, j] = k_{i <- j} is the rate *into i from j* (so columns are sources).
-
-    For a directed edge j -> i, we want the adjacency entry:
-        L[src=j, dst=i] = -log(k_{i <- j}) = -log(K[i, j])
-
-    Non-negativity
-    --------------
-    Dijkstra's algorithm (used internally by SciPy when possible) requires
-    non-negative edge weights. In principle, rates can exceed 1 in the chosen
-    units, which would make -log(k) negative and can create negative cycles.
-
-    To make this descriptor robust, we *shift* the edge lengths so that the
-    minimum edge length is 0 whenever needed. This is equivalent to normalizing
-    rates by the maximum observed rate in the graph, and leaves the ordering of
-    edges by "fastness" intact.
-    """
     K_coo = K.tocoo()
     mask = (K_coo.row != K_coo.col) & (K_coo.data > min_rate)
 
@@ -168,14 +108,7 @@ def compute_distance_features(
     B_sel: np.ndarray,
     barrier_mat: Optional[csr_matrix] = None,
 ) -> Dict[str, float]:
-    """
-    Compute A<->B distance features from branching, rate, and barrier matrices.
 
-    Three distance types:
-      - branch_dist_*: edge weight = -log(B_ij), branching probabilities
-      - rate_dist_*:   edge weight = -log(K_ij), transition rates
-      - barrier_dist_*: edge weight = barrier height (if available)
-    """
     feats: Dict[str, float] = {}
     A_idx = np.where(A_sel)[0]
     B_idx_dist = np.where(B_sel)[0]
@@ -239,21 +172,12 @@ def compute_distance_features(
     return feats
 
 
-
-
-
-
 def compute_spectral_features(
     Q: csr_matrix,
     pi: np.ndarray,
     n_eigs: int = 10,
 ) -> Dict[str, float]:
-    """
-    Compute spectral properties of the CTMC generator.
 
-    Uses the symmetric similarity transform S^{1/2} Q^T S^{-1/2}
-    (same approach as mfpt_analysis.py).
-    """
     feats: Dict[str, float] = {}
     N = Q.shape[0]
     k = min(n_eigs + 1, N - 1)
@@ -268,9 +192,6 @@ def compute_spectral_features(
     S = diags(sqrt_pi)
     Sinv = diags(inv_sqrt_pi)
     L_sym = S @ Q.T @ Sinv
-
-
-
 
 
     try:
@@ -315,9 +236,6 @@ def compute_spectral_features(
         lambda2 = nonzero[1]
 
 
-
-
-
         feats["spectral_gap_ratio"] = float(lambda1 / lambda2)
 
 
@@ -346,13 +264,9 @@ def compute_spectral_features(
     return feats
 
 
-
-
-
-
 def _sparse_pagerank(K: csr_matrix, alpha: float = 0.85, tol: float = 1e-8,
                      max_iter: int = 200) -> np.ndarray:
-    """Power iteration PageRank on the rate matrix (column-stochastic)."""
+
     N = K.shape[0]
 
     col_sums = np.asarray(K.sum(axis=0)).ravel()
@@ -375,12 +289,7 @@ def compute_centrality_features(
     A_sel: np.ndarray,
     B_sel: np.ndarray,
 ) -> Dict[str, float]:
-    """
-    Compute centrality of A and B states in the network.
 
-    Includes PageRank, stationary probability, eigenvector centrality,
-    and a closeness-like score on the undirected connectivity graph.
-    """
     feats: Dict[str, float] = {}
     N = K.shape[0]
 
@@ -408,7 +317,6 @@ def compute_centrality_features(
     except Exception:
         feats["eigvec_centrality_A"] = np.nan
         feats["eigvec_centrality_B"] = np.nan
-
 
 
     A_idx = np.where(A_sel)[0]
@@ -439,10 +347,6 @@ def compute_centrality_features(
     return feats
 
 
-
-
-
-
 def compute_community_features(
     K: csr_matrix,
     pi: np.ndarray,
@@ -450,10 +354,7 @@ def compute_community_features(
     B_sel: np.ndarray,
     max_clusters: int = 10,
 ) -> Dict[str, float]:
-    """
-    Detect metastable communities using spectral clustering on the
-    symmetrized rate matrix.
-    """
+
     feats: Dict[str, float] = {}
     N = K.shape[0]
 
@@ -559,18 +460,12 @@ def compute_community_features(
     return feats
 
 
-
-
-
-
 def compute_path_features(
     K: csr_matrix,
     A_sel: np.ndarray,
     B_sel: np.ndarray,
 ) -> Dict[str, float]:
-    """
-    Analyze shortest paths between A and B on the rate graph.
-    """
+
     feats: Dict[str, float] = {}
     A_idx = np.where(A_sel)[0]
     B_idx = np.where(B_sel)[0]
@@ -601,7 +496,6 @@ def compute_path_features(
     feats["shortest_path_hops_AB"] = min_hops
 
 
-
     a_rep = A_idx[0]
     b_rep = B_idx[0]
 
@@ -614,7 +508,6 @@ def compute_path_features(
         feats["rate_shortest_path_AB"] = np.nan
 
 
-
     threshold = min_hops * 2
     n_short = int(np.sum(finite_hops <= threshold))
     feats["n_short_pairs_AB"] = n_short
@@ -625,15 +518,11 @@ def compute_path_features(
     return feats
 
 
-
-
-
-
 def compute_topology_features(
     K: csr_matrix,
     include_clustering: bool = True,
 ) -> Dict[str, float]:
-    """Compute basic topological descriptors of the KTN."""
+
     feats: Dict[str, float] = {}
     N = K.shape[0]
     feats["n_nodes"] = N
@@ -686,7 +575,6 @@ def compute_topology_features(
     if include_clustering:
 
 
-
         A2 = adj_sym @ adj_sym
 
         A2_A = A2.multiply(adj_sym)
@@ -703,17 +591,13 @@ def compute_topology_features(
     return feats
 
 
-
-
-
-
 def extract_features_one(
     dps_dir: Path,
     T: float = 300.0,
     feature_groups: tuple[str, ...] = ALL_FEATURE_GROUPS,
     include_clustering: bool = True,
 ) -> Dict[str, Any]:
-    """Extract selected graph features for one coarse-grained KTN."""
+
     tag = temp_tag(T)
     row: Dict[str, Any] = {
         "dps_dir": str(dps_dir),

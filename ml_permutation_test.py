@@ -1,35 +1,5 @@
 #!/usr/bin/env python
-"""
-ml_permutation_test.py
 
-Permutation test for classical ML regression results.
-
-For each target, shuffles the target labels N_PERM times, reruns the full
-LOO-CV pipeline for the best model, and records the null-distribution R².
-Compares against the observed R² to compute an empirical p-value:
-
-    p = (# null R² >= observed R² + 1) / (N_PERM + 1)
-
-Also computes bootstrap 95% CIs on the observed LOO predictions for all
-four targets, not just MFPT_AB.
-
-Outputs
--------
-  {out_dir}/permutation_null_{target}.csv    — null R² values per shuffle
-  {out_dir}/permutation_summary.csv          — observed R², p-value, CI
-  {out_dir}/observed_predictions_{target}.csv — observed vs predicted pairs
-  {out_dir}/fig_permutation_null_{target}.pdf — null distribution + obs line
-  {out_dir}/bootstrap_ci.csv                 — bootstrap CIs for all targets
-
-Usage (cluster):
-    python ml_permutation_test.py \
-        --features-csv graph_features_coarse_T300K_lite.csv \
-        --targets-csv  GTcheck_micro_vs_coarse_T300K_full.csv \
-        --out-dir      permutation_results \
-        --n-perm 1000 \
-        --n-bootstrap 2000 \
-        --seed 42
-"""
 
 from __future__ import annotations
 
@@ -59,10 +29,6 @@ from ml_regression import (
 warnings.filterwarnings("ignore", category=UserWarning)
 
 
-
-
-
-
 BEST_MODELS = {
     "log_MFPT_AB": (ElasticNet, {"alpha": 0.5, "l1_ratio": 0.5, "max_iter": 10000}),
     "log_MFPT_BA": (GradientBoostingRegressor, {
@@ -85,10 +51,6 @@ MODEL_LABELS = {
 }
 
 
-
-
-
-
 def permutation_test(
     X: np.ndarray,
     y: np.ndarray,
@@ -97,16 +59,7 @@ def permutation_test(
     n_perm: int = 1000,
     seed: int = 42,
 ) -> tuple[np.ndarray, dict, np.ndarray, float]:
-    """
-    Run a permutation test on the LOO-CV R².
 
-    Returns
-    -------
-    y_pred_obs    : ndarray of observed LOO predictions
-    metrics_obs   : metrics dict for observed predictions
-    null_r2s      : ndarray of shape (n_perm,)
-    p_value       : float (one-sided, upper tail)
-    """
 
     y_pred_obs, metrics_obs = run_loocv(X, y, model_class, model_kwargs)
     observed_r2 = metrics_obs["R2"]
@@ -128,10 +81,6 @@ def permutation_test(
     return y_pred_obs, metrics_obs, null_r2s, p_value
 
 
-
-
-
-
 def bootstrap_r2_ci(
     y_true: np.ndarray,
     y_pred: np.ndarray,
@@ -139,13 +88,7 @@ def bootstrap_r2_ci(
     ci: float = 0.95,
     seed: int = 42,
 ) -> tuple[float, float, float]:
-    """
-    Bootstrap CI on R² from observed vs predicted arrays.
 
-    Returns
-    -------
-    median_r2, ci_lo, ci_hi
-    """
     mask = np.isfinite(y_true) & np.isfinite(y_pred)
     yt, yp = y_true[mask], y_pred[mask]
     n = len(yt)
@@ -169,10 +112,6 @@ def bootstrap_r2_ci(
     return median_r2, ci_lo, ci_hi
 
 
-
-
-
-
 def plot_null_distribution(
     null_r2s: np.ndarray,
     observed_r2: float,
@@ -180,7 +119,6 @@ def plot_null_distribution(
     target_name: str,
     out_path: Path,
 ):
-    """Histogram of null R² with observed value marked."""
     fig, ax = plt.subplots(1, 1, figsize=(7, 4.5))
 
     valid = null_r2s[np.isfinite(null_r2s)]
@@ -202,10 +140,6 @@ def plot_null_distribution(
     fig.tight_layout()
     fig.savefig(out_path, dpi=300, bbox_inches="tight")
     plt.close(fig)
-
-
-
-
 
 
 def main():

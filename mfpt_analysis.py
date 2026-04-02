@@ -1,46 +1,5 @@
 #!/usr/bin/env python
-"""
-mfpt_analysis.py
 
-Compute MFPTs / phenomenological rates between A and B for either
-the microscopic KTN or the NGT coarse–grained model, using PyGT.
-
-We assume you have, for each DPS directory and temperature T (e.g. T=300 K):
-
-Microscopic model:
-  markov_T{T}K/
-      B_T{T}K.npz                  # branching probabilities (sparse)
-      Q_T{T}K.npz                  # CTMC generator (sparse, rows sum to 0)
-      tau_T{T}K.npy                # waiting times tau_j
-      pi_T{T}K.npy                 # stationary distribution pi_j
-      orig_min_ids_T{T}K.npy       # or original_min_ids_T{T}K.npy (original PATHSAMPLE IDs)
-
-Coarse NGT model (GT_kept):
-  markov_T{T}K/GT_kept_T{T}K/
-      B_eff_T{T}K.npz              # effective branching probabilities
-      Q_eff_T{T}K.npz              # effective CTMC generator
-      tau_eff_T{T}K.npy            # effective waiting times
-      pi_eff_T{T}K.npy             # effective stationary distribution
-      orig_min_ids_eff_T{T}K.npy   # or original_min_ids_eff_T{T}K.npy
-
-AB selectors (from PATHSAMPLE):
-  min.A                            # text file of original minimum IDs in A
-  min.B                            # text file of original minimum IDs in B
-
-Outputs, per T and per model:
-
-Microscopic:
-  markov_T{T}K/
-      eigenvalues_T{T}K.npy
-      timescales_T{T}K.npy
-      AB_kinetics_T{T}K.npz        # MFPTs and (if applicable) phenomenological rates
-
-Coarse:
-  markov_T{T}K/GT_kept_T{T}K/
-      eigenvalues_T{T}K.npy
-      timescales_T{T}K.npy
-      AB_kinetics_T{T}K.npz
-"""
 
 from __future__ import annotations
 
@@ -54,12 +13,8 @@ from scipy.sparse.linalg import eigsh
 from PyGT import stats
 
 
-
-
-
-
 def _find_first_existing(candidates):
-    """Return the first Path in `candidates` that exists, or None."""
+
     for p in candidates:
         if p.exists():
             return p
@@ -67,13 +22,7 @@ def _find_first_existing(candidates):
 
 
 def load_markov_model(dps_dir: Path, T: float, coarse: bool):
-    """
-    Load B, tau, Q, pi, orig_min_ids, base_dir, tag for a given sequence and T.
 
-    dps_dir: directory like .../yyggyy_99idps_nocap
-    T: temperature in K
-    coarse: if True, use GT_kept_T{T}K/ effective model
-    """
     tag = f"T{int(round(T))}K"
 
     if coarse:
@@ -116,22 +65,8 @@ def load_markov_model(dps_dir: Path, T: float, coarse: bool):
     return B, tau, Q, pi, orig_ids, base, tag
 
 
-
-
-
-
 def _read_min_set(path: Path) -> np.ndarray:
-    """
-    Read PATHSAMPLE-style min.A / min.B files.
 
-    These are plain text. Common formats:
-
-      - First line = count, then that many integer IDs (possibly multiple per line).
-      - Or simply a list of integer IDs, one per line.
-
-    We detect the "count" convention by checking if the first integer equals
-    (total_count - 1). If yes, we drop it; otherwise we treat all integers as IDs.
-    """
     if not path.exists():
         return np.array([], dtype=int)
 
@@ -153,13 +88,7 @@ def _read_min_set(path: Path) -> np.ndarray:
 
 
 def make_AB_selectors(dps_dir: Path, orig_ids: np.ndarray):
-    """
-    Build boolean selectors A_sel, B_sel on the *current* model indices,
-    using original minimum IDs matched against min.A and min.B in the DPS dir.
 
-    orig_ids: array of original PATHSAMPLE min indices corresponding to
-              rows/cols of Q, B, etc. (micro or coarse).
-    """
     A_ids = _read_min_set(dps_dir / "min.A")
     B_ids = _read_min_set(dps_dir / "min.B")
 
@@ -176,19 +105,8 @@ def make_AB_selectors(dps_dir: Path, orig_ids: np.ndarray):
     return A_sel, B_sel
 
 
-
-
-
-
 def compute_spectrum(Q, pi, max_eigs: int, out_dir: Path, tag: str):
-    """
-    Robust slow-mode spectrum for reversible CTMC.
 
-    Computes the slowest nonzero eigenvalues (closest to 0 from below) and
-    relaxation timescales tau_k = -1/lambda_k.
-
-    Works best for coarse models (N ~ 10^2–10^4).
-    """
     import numpy as np
     from scipy.sparse import diags
     from scipy.sparse.linalg import eigsh, ArpackNoConvergence
@@ -266,11 +184,6 @@ def compute_spectrum(Q, pi, max_eigs: int, out_dir: Path, tag: str):
     print("[mfpt_analysis] WARNING: spectrum failed for this model; skipping.")
 
 
-
-
-
-
-
 def compute_AB_kinetics(
     dps_dir: Path,
     B,
@@ -281,15 +194,7 @@ def compute_AB_kinetics(
     out_dir: Path,
     tag: str,
 ):
-    """
-    Use PyGT to get MFPTs / rates between A and B and save them.
 
-    Cases:
-      - If |A|=0 or |B|=0: just save sizes and bail.
-      - If |A|=|B|=1: use PyGT.stats.compute_passage_stats (exact MFPT, no GT).
-      - Otherwise: use PyGT.stats.compute_rates, which does graph transformation
-        internally and gives MFPTs and phenomenological rates (kSS, kNSS, k*, kF, etc.).
-    """
     A_sel, B_sel = make_AB_selectors(dps_dir, orig_ids)
     if A_sel is None or B_sel is None:
         print("[mfpt_analysis] Skipping AB kinetics (no valid A/B sets).")
@@ -304,8 +209,6 @@ def compute_AB_kinetics(
         print("[mfpt_analysis] Either A or B is empty; not computing MFPTs.")
         np.savez(out_dir / f"AB_kinetics_{tag}.npz", **results)
         return
-
-
 
 
     if nA == 1 and nB == 1:
@@ -330,7 +233,6 @@ def compute_AB_kinetics(
     else:
 
 
-
         print("[mfpt_analysis] Using PyGT.stats.compute_rates for MFPTs and rates...")
         rate_dict = stats.compute_rates(
             A_sel,
@@ -351,14 +253,8 @@ def compute_AB_kinetics(
     print(f"[mfpt_analysis] Saved AB kinetics → {out_path}")
 
 
-
-
-
-
 def analyse_one(dps_dir: Path, T: float, coarse: bool, max_eigs: int):
-    """
-    Run spectrum + AB kinetics for a single DPS directory at temperature T.
-    """
+
     model_label = "coarse" if coarse else "micro"
     print(f"[mfpt_analysis] Analysing {dps_dir} at T = {T} K ({model_label} model)")
 

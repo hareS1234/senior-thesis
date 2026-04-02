@@ -1,30 +1,5 @@
 #!/usr/bin/env python
-"""
-committor_linear_baseline.py
 
-Non-GNN baselines for committor prediction on node features alone
-(no message passing).
-
-Purpose: establish whether the GNN's R² ≈ 0.077 comes from message passing
-or from the node features themselves.  If linear regression also gives
-R² ≈ 0.07, the node features carry the signal and message passing adds nothing.
-If linear gives R² ≈ 0.0 but GAT gives 0.077, then message passing contributes
-real (albeit small) value.
-
-Uses the same KTNDataset, train/val split, and evaluation as train_gnn_v2.py,
-but replaces the GNN with sklearn models applied independently per node.
-
-Outputs
--------
-  {out_dir}/linear_baseline_summary.csv   — R², MAE per model
-  {out_dir}/baseline_val_predictions.csv  — validation predictions per model
-  {out_dir}/fig_committor_baselines.pdf   — pred vs true scatter per model
-
-Usage:
-    python committor_linear_baseline.py \
-        --targets-csv GTcheck_micro_vs_coarse_T300K_full.csv \
-        --out-dir     linear_baseline_results
-"""
 
 from __future__ import annotations
 
@@ -52,10 +27,6 @@ from ktn_dataset import KTNDataset
 warnings.filterwarnings("ignore", category=UserWarning)
 
 
-
-
-
-
 BASELINES = {
     "LinearRegression": (LinearRegression, {}),
     "Ridge_alpha1": (Ridge, {"alpha": 1.0}),
@@ -75,13 +46,7 @@ BASELINES = {
 
 
 def load_gnn_reference(results_dir: Path) -> list[dict]:
-    """
-    Load GNN reference metrics from metrics_*.json files if present.
 
-    This avoids hard-coding thesis numbers in the baseline script.  If the
-    directory is absent or empty, return an empty list and let the non-GNN
-    baselines stand on their own.
-    """
     if not results_dir.exists():
         return []
 
@@ -115,22 +80,13 @@ def load_gnn_reference(results_dir: Path) -> list[dict]:
     return refs
 
 
-
-
-
-
 def extract_node_data(
     dataset,
     task: str = "committor",
     train_frac: float = 0.8,
     seed: int = 42,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    """
-    Extract (X_train, y_train, X_val, y_val) pooled across all graphs,
-    using the exact same interior-node train/val split as train_gnn_v2.py.
 
-    Returns numpy arrays ready for sklearn.
-    """
     target_attr = "committor" if task == "committor" else "mfpt_to_B"
 
     X_train_list, y_train_list = [], []
@@ -180,10 +136,6 @@ def extract_node_data(
     y_val = np.concatenate(y_val_list)
 
     return X_train, y_train, X_val, y_val
-
-
-
-
 
 
 def main():

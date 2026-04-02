@@ -1,16 +1,5 @@
 #!/usr/bin/env python
-"""
-ml_regression.py
 
-Classical ML regression: test whether hand-crafted graph features predict
-kinetic observables (MFPTs, relaxation times).
-
-Usage:
-    python ml_regression.py \
-        --features-csv graph_features_coarse_T300K.csv \
-        --targets-csv  GTcheck_micro_vs_coarse_T300K_full.csv \
-        --out-dir      ml_results
-"""
 
 from __future__ import annotations
 
@@ -52,24 +41,13 @@ TARGET_DEFS = {
 }
 
 
-
-
-
-
 def load_and_merge_data(
     features_csv: Path,
     targets_csv: Path,
 ) -> pd.DataFrame:
-    """
-    Merge graph features with kinetic targets.
 
-    Joins on dps_dir.  Adds log-transformed targets.
-    Filters to rows where both features and targets are valid.
-    """
     feat_df = pd.read_csv(features_csv)
     tgt_df = pd.read_csv(targets_csv)
-
-
 
 
     feat_df["dps_dir"] = feat_df["dps_dir"].astype(str).str.rstrip("/")
@@ -81,9 +59,6 @@ def load_and_merge_data(
 
     df = feat_df.merge(tgt_df, on="_join_key", how="inner", suffixes=("", "_tgt"))
     df.drop(columns=["_join_key", "dps_dir_tgt"], inplace=True, errors="ignore")
-
-
-
 
 
     if "status" in df.columns:
@@ -106,7 +81,7 @@ def load_and_merge_data(
 
 
 def get_feature_cols(df: pd.DataFrame) -> List[str]:
-    """Identify numeric feature columns (exclude metadata and targets)."""
+
     exclude = set(METADATA_COLS) | set(TARGET_DEFS.keys())
 
     exclude.update(TARGET_DEFS[k][0] for k in TARGET_DEFS)
@@ -137,25 +112,13 @@ def get_feature_cols(df: pd.DataFrame) -> List[str]:
     return candidates
 
 
-
-
-
-
 def run_loocv(
     X: np.ndarray,
     y: np.ndarray,
     model_class,
     model_kwargs: dict,
 ) -> Tuple[np.ndarray, Dict[str, float]]:
-    """
-    Leave-one-out CV with per-fold imputation and standardization.
 
-    Each fold fits its own SimpleImputer (median) → StandardScaler → model
-    pipeline to prevent data leakage while preserving samples that have
-    partial NaN features (e.g., missing barrier distances).
-
-    Returns predictions and metrics dict.
-    """
     loo = LeaveOneOut()
     y_pred = np.full_like(y, np.nan)
 
@@ -196,10 +159,6 @@ def run_loocv(
     return y_pred, metrics
 
 
-
-
-
-
 MODELS = {
     "OLS": (LinearRegression, {}),
     "Ridge_1": (Ridge, {"alpha": 1.0}),
@@ -228,7 +187,7 @@ def compare_models(
     feature_names: List[str],
     model_names: Optional[List[str]] = None,
 ) -> pd.DataFrame:
-    """Run selected models on one target via LOO-CV and return comparison table."""
+
     selected = model_names if model_names is not None else list(MODELS)
     results = []
     for name in selected:
@@ -245,10 +204,6 @@ def compare_models(
     return out.sort_values("R2", ascending=False, na_position="last")
 
 
-
-
-
-
 def compute_feature_importance(
     X: np.ndarray,
     y: np.ndarray,
@@ -257,9 +212,7 @@ def compute_feature_importance(
     model_kwargs: dict = None,
     n_repeats: int = 50,
 ) -> pd.DataFrame:
-    """
-    Permutation importance on the full dataset (for interpretation).
-    """
+
     if model_kwargs is None:
         model_kwargs = {"n_estimators": 100, "max_depth": 4, "random_state": 42}
 
@@ -288,10 +241,6 @@ def compute_feature_importance(
     return imp_df
 
 
-
-
-
-
 def forward_selection(
     X: np.ndarray,
     y: np.ndarray,
@@ -300,9 +249,7 @@ def forward_selection(
     model_class=Ridge,
     model_kwargs: dict = None,
 ) -> pd.DataFrame:
-    """
-    Greedy forward feature selection using LOO-CV R² as criterion.
-    """
+
     if model_kwargs is None:
         model_kwargs = {"alpha": 1.0}
 
@@ -341,10 +288,6 @@ def forward_selection(
     return pd.DataFrame(history)
 
 
-
-
-
-
 def plot_predicted_vs_actual(
     y_true: np.ndarray,
     y_pred: np.ndarray,
@@ -353,7 +296,7 @@ def plot_predicted_vs_actual(
     model_name: str,
     out_path: Path,
 ):
-    """Predicted vs actual scatter with identity line and labels."""
+
     fig, ax = plt.subplots(1, 1, figsize=(7, 6))
     mask = np.isfinite(y_true) & np.isfinite(y_pred)
     yt, yp = y_true[mask], y_pred[mask]
@@ -390,7 +333,7 @@ def plot_feature_importance(
     out_path: Path,
     top_n: int = 15,
 ):
-    """Horizontal bar chart of top feature importances."""
+
     df = imp_df.head(top_n).iloc[::-1]
     fig, ax = plt.subplots(1, 1, figsize=(8, 0.4 * len(df) + 1.5))
     ax.barh(df["feature"], df["importance"],
@@ -407,7 +350,6 @@ def plot_forward_selection(
     target_name: str,
     out_path: Path,
 ):
-    """R² vs number of features plot."""
     fig, ax = plt.subplots(1, 1, figsize=(7, 4.5))
     ax.plot(sel_df["step"], sel_df["R2"], "o-", color="steelblue",
             markersize=8, linewidth=2)
@@ -422,10 +364,6 @@ def plot_forward_selection(
     fig.tight_layout()
     fig.savefig(out_path, dpi=200)
     plt.close(fig)
-
-
-
-
 
 
 def main():

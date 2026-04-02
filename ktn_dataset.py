@@ -1,25 +1,5 @@
 #!/usr/bin/env python
-"""
-ktn_dataset.py
 
-Convert coarse-grained KTN data (sparse matrices, node/edge features) into
-PyTorch Geometric Data objects for GNN training.
-
-Each KTN becomes a Data object with:
-    x           : node features  [N, D_node]
-    edge_index  : COO connectivity  [2, E]
-    edge_attr   : edge features  [E, D_edge]
-    y           : graph-level target(s)  [1, n_targets]
-    committor   : node-level committor q_i  [N]  (optional)
-    mfpt_to_B   : node-level MFPT to B  [N]  (optional)
-
-Usage:
-    dataset = KTNDataset(
-        root="ktn_pyg_data",
-        base_dir=Path("/scratch/gpfs/JERELLE/harry/thesis_data/LAMMPS_uncapped"),
-        targets_csv=Path("GTcheck_micro_vs_coarse_T300K_full.csv"),
-    )
-"""
 
 from __future__ import annotations
 
@@ -39,34 +19,12 @@ from config import iter_dps_dirs
 from io_markov import load_markov, load_AB_selectors, temp_tag
 
 
-
-
-
-
 def compute_committor(
     Q: csr_matrix,
     A_sel: np.ndarray,
     B_sel: np.ndarray,
 ) -> Optional[np.ndarray]:
-    """
-    Compute the *forward committor* q_i^+ for each node:
 
-        q_i^+ = P(reach B before A | start at i).
-
-    With our convention, the generator `Q` acts on *probability vectors* via
-    dp/dt = Q p, so columns sum to zero.  The associated *backward*
-    (row-sum-zero) generator is G = Q^T.
-
-    Boundary conditions:
-        q_A = 0,  q_B = 1
-
-    Interior equation (backward equation):
-        G_II q_I = - G_IB 1
-
-    Returns
-    -------
-    q : (N,) ndarray in [0, 1], or None on failure.
-    """
     N = Q.shape[0]
     A_sel = np.asarray(A_sel, dtype=bool)
     B_sel = np.asarray(B_sel, dtype=bool)
@@ -111,18 +69,7 @@ def compute_mfpt_to_B(
     Q: csr_matrix,
     B_sel: np.ndarray,
 ) -> Optional[np.ndarray]:
-    """
-    Compute the mean first-passage time (MFPT) from each node to set B.
 
-    With the column-sum-zero convention dp/dt = Q p, the backward generator is
-    G = Q^T. The MFPT m solves, for i in I = complement(B):
-
-        (G m)_i = -1,   with boundary m_B = 0.
-
-    Returns
-    -------
-    m : (N,) ndarray (non-negative), or None on failure.
-    """
     N = Q.shape[0]
     B_sel = np.asarray(B_sel, dtype=bool)
     if B_sel.shape[0] != N:
@@ -150,10 +97,6 @@ def compute_mfpt_to_B(
     return m
 
 
-
-
-
-
 def build_node_features(
     pi: np.ndarray,
     tau: np.ndarray,
@@ -163,24 +106,7 @@ def build_node_features(
     energies: Optional[np.ndarray] = None,
     entropies: Optional[np.ndarray] = None,
 ) -> torch.Tensor:
-    """
-    Build node feature matrix [N, D_node].
 
-    Features:
-        0: log(pi)          (standardized within graph)
-        1: log(tau)          (standardized within graph)
-        2: energy            (standardized within graph, or 0)
-        3: entropy           (standardized within graph, or 0)
-        4: is_A              (binary)
-        5: is_B              (binary)
-        6: mean_log_rate     (global scalar, same for all nodes)
-        7: std_log_rate      (global scalar, same for all nodes)
-        8: mean_log_tau      (global scalar, same for all nodes)
-
-    Columns 6-8 are *not* standardized within the graph.  They encode the
-    absolute kinetic scale of this network, which is critical for
-    graph-level MFPT prediction across different sequences.
-    """
     N = pi.size
     feats = np.zeros((N, 9), dtype=np.float32)
 
@@ -208,7 +134,6 @@ def build_node_features(
     feats[:, 5] = B_sel.astype(np.float32)
 
 
-
     if K is not None:
         K_coo = K.tocoo()
         off_diag = K_coo.data[K_coo.row != K_coo.col]
@@ -229,29 +154,7 @@ def build_edge_features(
     K: csr_matrix,
     B_mat: csr_matrix,
 ) -> Tuple[torch.Tensor, torch.Tensor]:
-    """
-    Build (edge_index, edge_attr) for PyTorch Geometric.
 
-    Conventions
-    ----------
-    K[i, j] = k_{i <- j} is the *rate into i from j* (so columns are sources).
-    Therefore each nonzero off-diagonal entry K[i, j] corresponds to a directed
-    edge (source=j) -> (target=i).
-
-    Edge features (D_edge = 4)
-    -------------------------
-        0: log(k_{i<-j})   forward log-rate
-        1: log(k_{j<-i})   reverse log-rate (0 if no reverse edge)
-        2: B_{i<-j}        branching probability for this jump
-        3: has_reverse      1.0 if reverse edge j<-i exists, else 0.0
-
-    Notes
-    -----
-    We standardize the two log-rate columns *within each graph* to stabilize
-    training across networks with different absolute prefactors.  The binary
-    ``has_reverse`` feature lets the model distinguish "no reverse edge" from
-    "very small reverse rate" after standardization shifts the sentinel 0.
-    """
     K_coo = K.tocoo()
     mask = K_coo.row != K_coo.col
 
@@ -293,10 +196,6 @@ def build_edge_features(
         edge_attr[:, 0] = 0.0
 
 
-
-
-
-
     rev_mask = has_reverse
     if rev_mask.sum() > 1:
         rev_vals = edge_attr[rev_mask, 1]
@@ -310,21 +209,8 @@ def build_edge_features(
     return edge_index, torch.from_numpy(edge_attr)
 
 
-
-
-
-
 class KTNDataset(InMemoryDataset):
-    """
-    PyTorch Geometric dataset for hexapeptide KTNs.
 
-    Args:
-        root: directory for processed .pt cache
-        base_dir: path to LAMMPS_uncapped (where DPS dirs live)
-        T: temperature (default 300.0)
-        targets_csv: CSV with graph-level targets (from GTcheck)
-        compute_node_targets: whether to solve for committor/MFPT (slower)
-    """
 
     def __init__(
         self,
@@ -461,10 +347,6 @@ class KTNDataset(InMemoryDataset):
 
         print(f"[ktn_dataset] Built {len(data_list)} graphs.")
         self.save(data_list, self.processed_paths[0])
-
-
-
-
 
 
 def main():

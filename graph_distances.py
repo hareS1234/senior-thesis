@@ -1,13 +1,4 @@
-"""
-graph_distances.py
 
-Higher-level helpers to compute graph distances on the KTN:
-
-- barrier-based Dijkstra distance (additive sum of barrier heights)
-- rate-based Dijkstra distance (edge length = -log k_ij)
-
-All distances are on the retained-minima graph (same indexing as B/K/Q/pi).
-"""
 
 from __future__ import annotations
 from pathlib import Path
@@ -35,26 +26,7 @@ def barrier_distances(
     markov_paths: MarkovFilePaths,
     sources: Optional[Iterable[int]] = None,
 ) -> np.ndarray:
-    """
-    Compute Dijkstra distances on the barrier-height graph.
 
-    Parameters
-    ----------
-    data_dir : Path
-        DPS directory containing min.data / ts.data.
-    markov_paths : MarkovFilePaths
-        Gives pygt_dir + retained_mask path.
-    sources : iterable of int or None
-        Indices (in retained-minima indexing) to use as sources.
-        If None, distances from *all* nodes are computed (N×N).
-
-    Returns
-    -------
-    dist : ndarray
-        If sources is None: shape (N, N).
-        Else: shape (len(sources), N).
-        dist[i, j] = minimal sum of barrier heights along any path i→j.
-    """
     barrier_mat = build_barrier_matrix(data_dir, markov_paths)
     N = barrier_mat.shape[0]
 
@@ -80,28 +52,9 @@ def rate_based_lengths(
     sources: Optional[Iterable[int]] = None,
     min_rate: float = 1e-300,
 ) -> np.ndarray:
-    """
-    Compute Dijkstra distances where edge length = -log(k_ij).
 
-    Uses the off-diagonal rate matrix K from PyGT.
-
-    Parameters
-    ----------
-    markov_paths : MarkovFilePaths
-        Path bundle pointing to K_TxxxK.npz.
-    sources : iterable of int or None
-        As in barrier_distances.
-    min_rate : float
-        Smallest rate to allow (values below are ignored).
-
-    Returns
-    -------
-    dist : ndarray
-        Dijkstra distances on -log(k_ij).
-    """
     K = load_sparse(markov_paths.K_path)
     N = K.shape[0]
-
 
 
     K_coo = K.tocoo()
